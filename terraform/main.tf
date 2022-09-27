@@ -151,6 +151,7 @@ resource "azurerm_linux_virtual_machine" "example" {
     type = "SystemAssigned"
   }
 
+  admin_username = "azureuser"
   admin_ssh_key {
     public_key = data.azurerm_key_vault_key.key.public_key_openssh
     username   = "azureuser"
