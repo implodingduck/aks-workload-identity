@@ -54,3 +54,208 @@ resource "azurerm_resource_group" "rg" {
   location = var.location
   tags = local.tags
 }
+
+data "azurerm_key_vault" "kv" {
+  name                = var.kv_name
+  resource_group_name = replace(var.kv_name, "kv-", "rg-")
+}
+
+data "azurerm_key_vault_key" "key" {
+  name         = "generic-vm-key"
+  key_vault_id = data.azurerm_key_vault.kv
+  
+}
+
+resource "azurerm_virtual_network" "default" {
+  name                = "${local.cluster_name}-vnet-eastus"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  address_space       = ["10.0.0.0/16"]
+
+  tags = local.tags
+}
+
+
+resource "azurerm_subnet" "default" {
+  name                 = "default-subnet-eastus"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.default.name
+  address_prefixes     = ["10.0.0.0/24"]
+}
+
+resource "azurerm_subnet" "cluster" {
+  name                 = "${local.cluster_name}-subnet-eastus"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.default.name
+  address_prefixes     = ["10.0.2.0/23"]
+
+}
+
+
+resource "azurerm_network_interface" "example" {
+  name                = "example-nic"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.default.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.pip.id
+  }
+
+}
+
+resource "azurerm_public_ip" "pip" {
+  name                = "proxy-public-ip"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  allocation_method   = "Static"
+
+}
+
+
+data "template_file" "vm-cloud-init" {
+  template = file("${path.module}/install-tinyproxy.sh")
+}
+
+resource "azurerm_linux_virtual_machine" "example" {
+  depends_on = [
+    azurerm_key_vault_access_policy.sp
+  ]
+  name                  = "vm-${local.cluster_name}-proxy"
+  resource_group_name   = azurerm_resource_group.rg.name
+  location              = azurerm_resource_group.rg.location
+  size                  = "Standard_B1s"
+  custom_data           = base64encode(data.template_file.vm-cloud-init.rendered)
+  
+  network_interface_ids = [
+    azurerm_network_interface.example.id,
+  ]
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-focal"
+    sku       = "20_04-lts-gen2"
+    version   = "latest"
+  }
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  admin_ssh_key {
+    public_key = data.azurerm_key_vault_key.key.public_key_openssh
+    username   = "azureuser"
+  }
+}
+
+data "azurerm_kubernetes_service_versions" "current" {
+  location = azurerm_resource_group.rg.location
+}
+
+resource "azurerm_kubernetes_cluster" "aks" {
+  depends_on = [
+    azurerm_key_vault_access_policy.sp
+  ]
+  name                    = local.cluster_name
+  location                = azurerm_resource_group.rg.location
+  resource_group_name     = azurerm_resource_group.rg.name
+  dns_prefix              = local.cluster_name
+  kubernetes_version      = data.azurerm_kubernetes_service_versions.current.latest_version
+  private_cluster_enabled = true
+  default_node_pool {
+    name            = "default"
+    node_count      = 1
+    vm_size         = "Standard_B2s"
+    os_disk_size_gb = "128"
+    vnet_subnet_id  = azurerm_subnet.cluster.id
+
+
+  }
+  network_profile {
+    network_plugin     = "azure"
+    network_policy     = "azure"
+    service_cidr       = "10.255.252.0/22"
+    dns_service_ip     = "10.255.252.10"
+    docker_bridge_cidr = "172.17.0.1/16"
+  }
+
+  role_based_access_control {
+    enabled = true
+    
+  }
+  linux_profile {
+    admin_username = "azureuser"
+    ssh_key {
+      key_data = data.azurerm_key_vault_key.key.public_key_openssh
+    }
+  }
+
+  identity {
+    type = "SystemAssigned"
+  }
+  
+  http_proxy_config {
+    http_proxy = "http://${azurerm_public_ip.pip.ip_address}:8888/"    
+    https_proxy = "http://${azurerm_public_ip.pip.ip_address}:8888/"
+    no_proxy = [
+     "cluster.local",
+     "default"
+    ]
+  }
+  oidc_issuer_enabled = true
+  oms_agent {
+    log_analytics_workspace_id = data.azurerm_log_analytics_workspace.default.id
+  }
+
+  tags = local.tags
+  lifecycle {
+    ignore_changes = [
+      http_proxy_config.0.no_proxy
+    ]
+  }
+}
+
+resource "azurerm_role_assignment" "network" {
+  scope                = azurerm_resource_group.rg.id
+  role_definition_name = "Network Contributor"
+  principal_id         = azurerm_kubernetes_cluster.aks.identity.0.principal_id
+}
+
+resource "azurerm_role_assignment" "fast_metrics" {
+  scope                = azurerm_kubernetes_cluster.aks.id
+  role_definition_name = "Monitoring Metrics Publisher"
+  principal_id         = azurerm_kubernetes_cluster.aks.oms_agent[0].oms_agent_identity[0].object_id
+}
+
+resource "azurerm_user_assigned_identity" "fic" {
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+
+  name = "uai-fic-${local.cluster_name}"
+}
+
+resource "azapi_resource" "fic" {
+  depends_on = [
+    azurerm_kubernetes_cluster.aks
+  ]
+  type = "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2022-01-31-preview"
+  name      = "azapific"
+  parent_id = azurerm_resource_group.rg.id
+
+  body = jsonencode({
+    properties = {
+      audiences = [
+        "api://AzureADTokenExchange"
+      ]
+      issuer = azurerm_kubernetes_cluster.aks.oidc_issuer_url 
+      subject = "system:serviceaccount:default:${azurerm_user_assigned_identity.fic.name}"
+    }
+  })
+}

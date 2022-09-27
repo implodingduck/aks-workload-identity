@@ -28,3 +28,7 @@ variable "location" {
 variable "gh_repo" {
   type = string
 }
+
+variable "kv_name" {
+  type = string
+}
