@@ -70,6 +70,7 @@ jobs:
           TF_VAR_subscription_id: ${{ steps.kvAction.outputs.subscription-id }}
           TF_VAR_key: ${{ github.repository }}.tfstate
           TF_VAR_gh_repo: ${{ github.repository }}
+          TF_VAR_kv_name: ${{ secrets.KV_NAME }}
         run: |
             echo "starting..."
             cd terraform
@@ -89,6 +90,7 @@ jobs:
           TF_VAR_subscription_id: ${{ steps.kvAction.outputs.subscription-id }}
           TF_VAR_key: ${{ github.repository }}.tfstate
           TF_VAR_gh_repo: ${{ github.repository }}
+          TF_VAR_kv_name: ${{ secrets.KV_NAME }}
         run: |
             echo "starting..."
             cd terraform
