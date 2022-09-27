@@ -125,9 +125,6 @@ data "template_file" "vm-cloud-init" {
 }
 
 resource "azurerm_linux_virtual_machine" "example" {
-  depends_on = [
-    azurerm_key_vault_access_policy.sp
-  ]
   name                  = "vm-${local.cluster_name}-proxy"
   resource_group_name   = azurerm_resource_group.rg.name
   location              = azurerm_resource_group.rg.location
@@ -165,9 +162,6 @@ data "azurerm_kubernetes_service_versions" "current" {
 }
 
 resource "azurerm_kubernetes_cluster" "aks" {
-  depends_on = [
-    azurerm_key_vault_access_policy.sp
-  ]
   name                    = local.cluster_name
   location                = azurerm_resource_group.rg.location
   resource_group_name     = azurerm_resource_group.rg.name
