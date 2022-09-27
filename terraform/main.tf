@@ -25,7 +25,8 @@ provider "azurerm" {
 }
 
 locals {
-  func_name = "func${random_string.unique.result}"
+  func_name = "aksworkid${random_string.unique.result}"
+  cluster_name = local.func_name
   loc_for_naming = lower(replace(var.location, " ", ""))
   gh_repo = replace(var.gh_repo, "implodingduck/", "")
   tags = {
