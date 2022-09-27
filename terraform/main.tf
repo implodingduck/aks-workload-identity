@@ -185,10 +185,8 @@ resource "azurerm_kubernetes_cluster" "aks" {
     docker_bridge_cidr = "172.17.0.1/16"
   }
 
-  role_based_access_control {
-    enabled = true
+  role_based_access_control_enabled = true
     
-  }
   linux_profile {
     admin_username = "azureuser"
     ssh_key {
