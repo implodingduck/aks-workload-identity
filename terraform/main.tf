@@ -168,7 +168,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   resource_group_name     = azurerm_resource_group.rg.name
   dns_prefix              = local.cluster_name
   kubernetes_version      = data.azurerm_kubernetes_service_versions.current.latest_version
-  private_cluster_enabled = true
+  private_cluster_enabled = false
   default_node_pool {
     name            = "default"
     node_count      = 1
