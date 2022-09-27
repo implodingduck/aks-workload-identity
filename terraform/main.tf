@@ -188,12 +188,12 @@ resource "azurerm_kubernetes_cluster" "aks" {
 
   role_based_access_control_enabled = true
     
-  linux_profile {
-    admin_username = "azureuser"
-    ssh_key {
-      key_data = data.azurerm_key_vault_key.key.public_key_openssh
-    }
-  }
+  # linux_profile {
+  #   admin_username = "azureuser"
+  #   ssh_key {
+  #     key_data = data.azurerm_key_vault_key.key.public_key_openssh
+  #   }
+  # }
 
   identity {
     type = "SystemAssigned"
