@@ -8,6 +8,10 @@ terraform {
       source  = "hashicorp/random"
       version = "=3.1.0"
     }
+    azapi = {
+      source = "azure/azapi"
+      version = "=0.5.0"
+    }
   }
   backend "azurerm" {
 
@@ -247,7 +251,7 @@ resource "azapi_resource" "fic" {
   ]
   type = "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2022-01-31-preview"
   name      = "azapific"
-  parent_id = azurerm_resource_group.rg.id
+  parent_id = azurerm_user_assigned_identity.fic.id
 
   body = jsonencode({
     properties = {
