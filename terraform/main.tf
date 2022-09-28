@@ -65,8 +65,8 @@ data "azurerm_key_vault" "kv" {
   resource_group_name = replace(var.kv_name, "kv-", "rg-")
 }
 
-data "azurerm_key_vault_key" "key" {
-  name         = "generic-vm-key"
+data "azurerm_key_vault_secret" "secret" {
+  name         = "generic-public-key"
   key_vault_id = data.azurerm_key_vault.kv.id
   
 }
@@ -153,7 +153,7 @@ resource "azurerm_linux_virtual_machine" "example" {
 
   admin_username = "azureuser"
   admin_ssh_key {
-    public_key = data.azurerm_key_vault_key.key.public_key_openssh
+    public_key = data.azurerm_key_vault_secret.secret.value
     username   = "azureuser"
   }
 }
@@ -187,21 +187,14 @@ resource "azurerm_kubernetes_cluster" "aks" {
   }
 
   role_based_access_control_enabled = true
-    
-  # linux_profile {
-  #   admin_username = "azureuser"
-  #   ssh_key {
-  #     key_data = data.azurerm_key_vault_key.key.public_key_openssh
-  #   }
-  # }
 
   identity {
     type = "SystemAssigned"
   }
   
   http_proxy_config {
-    http_proxy = "http://${azurerm_public_ip.pip.ip_address}:8888/"    
-    https_proxy = "http://${azurerm_public_ip.pip.ip_address}:8888/"
+    http_proxy = "http://${azurerm_network_interface.example.private_ip_address}:8888/"    
+    https_proxy = "http://${azurerm_network_interface.example.private_ip_address}:8888/"
     no_proxy = [
      "cluster.local",
      "default"
