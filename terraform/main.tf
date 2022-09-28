@@ -252,8 +252,26 @@ resource "azurerm_kubernetes_cluster" "aksproxy" {
   }
 }
 
+resource "azapi_resource_action" "enable_workloadid" {
+  type        = "Microsoft.ContainerService/managedClusters@2022-03-02-preview"
+  resource_id = azurerm_kubernetes_cluster.aks.id
+  method      = "PUT"
+  
+  body = jsonencode({
+    location = azurerm_resource_group.rg.location
+    properties = {
+      "securityProfile" = {
+        "workloadIdentity" = {
+          "enabled" = true
+        }
+      }
+    }
+  })
+  response_export_values = ["*"]
+}
+
 resource "azapi_resource_action" "update" {
-  type        = "Microsoft.ContainerService/managedClusters@2022-08-03-preview"
+  type        = "Microsoft.ContainerService/managedClusters@2022-03-02-preview"
   resource_id = azurerm_kubernetes_cluster.aksproxy.id
   method      = "PUT"
   
