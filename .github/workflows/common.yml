@@ -62,7 +62,8 @@ jobs:
         env:
           ARM_CLIENT_ID: ${{ steps.kvAction.outputs.ARM-CLIENT-ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_USE_OIDC: true 
+          #ARM_USE_OIDC: true
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           ARM_TENANT_ID: ${{ steps.kvAction.outputs.ARM-TENANT-ID }}
           TF_VAR_container_name: ${{ steps.kvAction.outputs.container-name }}
           TF_VAR_resource_group_name: ${{ steps.kvAction.outputs.resource-group-name }}
@@ -82,7 +83,8 @@ jobs:
         env:
           ARM_CLIENT_ID: ${{ steps.kvAction.outputs.ARM-CLIENT-ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_USE_OIDC: true
+          #ARM_USE_OIDC: true
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           ARM_TENANT_ID: ${{ steps.kvAction.outputs.ARM-TENANT-ID }}
           TF_VAR_container_name: ${{ steps.kvAction.outputs.container-name }}
           TF_VAR_resource_group_name: ${{ steps.kvAction.outputs.resource-group-name }}
