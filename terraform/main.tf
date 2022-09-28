@@ -192,14 +192,53 @@ resource "azurerm_kubernetes_cluster" "aks" {
     type = "SystemAssigned"
   }
   
-  # http_proxy_config {
-  #   http_proxy = "http://${azurerm_network_interface.example.private_ip_address}:8888/"    
-  #   https_proxy = "http://${azurerm_network_interface.example.private_ip_address}:8888/"
-  #   no_proxy = [
-  #    "cluster.local",
-  #    "default"
-  #   ]
-  # }
+  oidc_issuer_enabled = true
+  oms_agent {
+    log_analytics_workspace_id = data.azurerm_log_analytics_workspace.default.id
+  }
+
+  tags = local.tags
+
+}
+
+resource "azurerm_kubernetes_cluster" "aksproxy" {
+  name                    = "${local.cluster_name}proxy"
+  location                = azurerm_resource_group.rg.location
+  resource_group_name     = azurerm_resource_group.rg.name
+  dns_prefix              = local.cluster_name
+  kubernetes_version      = data.azurerm_kubernetes_service_versions.current.latest_version
+  private_cluster_enabled = false
+  default_node_pool {
+    name            = "default"
+    node_count      = 1
+    vm_size         = "Standard_B2s"
+    os_disk_size_gb = "128"
+    vnet_subnet_id  = azurerm_subnet.cluster.id
+
+
+  }
+  network_profile {
+    network_plugin     = "azure"
+    network_policy     = "azure"
+    service_cidr       = "10.255.252.0/22"
+    dns_service_ip     = "10.255.252.10"
+    docker_bridge_cidr = "172.17.0.1/16"
+  }
+
+  role_based_access_control_enabled = true
+
+  identity {
+    type = "SystemAssigned"
+  }
+  
+  http_proxy_config {
+    http_proxy = "http://${azurerm_network_interface.example.private_ip_address}:8888/"    
+    https_proxy = "http://${azurerm_network_interface.example.private_ip_address}:8888/"
+    no_proxy = [
+     "cluster.local",
+     "default"
+    ]
+  }
   oidc_issuer_enabled = true
   oms_agent {
     log_analytics_workspace_id = data.azurerm_log_analytics_workspace.default.id
@@ -219,10 +258,22 @@ resource "azurerm_role_assignment" "network" {
   principal_id         = azurerm_kubernetes_cluster.aks.identity.0.principal_id
 }
 
+resource "azurerm_role_assignment" "networkproxy" {
+  scope                = azurerm_resource_group.rg.id
+  role_definition_name = "Network Contributor"
+  principal_id         = azurerm_kubernetes_cluster.aksproxy.identity.0.principal_id
+}
+
 resource "azurerm_role_assignment" "fast_metrics" {
   scope                = azurerm_kubernetes_cluster.aks.id
   role_definition_name = "Monitoring Metrics Publisher"
   principal_id         = azurerm_kubernetes_cluster.aks.oms_agent[0].oms_agent_identity[0].object_id
+}
+
+resource "azurerm_role_assignment" "fast_metricsproxy" {
+  scope                = azurerm_kubernetes_cluster.aks.id
+  role_definition_name = "Monitoring Metrics Publisher"
+  principal_id         = azurerm_kubernetes_cluster.aksproxy.oms_agent[0].oms_agent_identity[0].object_id
 }
 
 resource "azurerm_user_assigned_identity" "fic" {
@@ -246,6 +297,25 @@ resource "azapi_resource" "fic" {
         "api://AzureADTokenExchange"
       ]
       issuer = azurerm_kubernetes_cluster.aks.oidc_issuer_url 
+      subject = "system:serviceaccount:default:${azurerm_user_assigned_identity.fic.name}"
+    }
+  })
+}
+
+resource "azapi_resource" "ficproxy" {
+  depends_on = [
+    azurerm_kubernetes_cluster.aks
+  ]
+  type = "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2022-01-31-preview"
+  name      = "azapificproxy"
+  parent_id = azurerm_user_assigned_identity.fic.id
+
+  body = jsonencode({
+    properties = {
+      audiences = [
+        "api://AzureADTokenExchange"
+      ]
+      issuer = azurerm_kubernetes_cluster.aksproxy.oidc_issuer_url 
       subject = "system:serviceaccount:default:${azurerm_user_assigned_identity.fic.name}"
     }
   })
