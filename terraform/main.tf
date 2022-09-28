@@ -252,6 +252,25 @@ resource "azurerm_kubernetes_cluster" "aksproxy" {
   }
 }
 
+resource "azapi_resource_action" "update" {
+  type        = "Microsoft.ContainerService/managedClusters@2022-08-03-preview"
+  resource_id = azurerm_kubernetes_cluster.aksproxy.id
+  method      = "PUT"
+  body = jsonencode({
+   
+    properties = {
+      "securityProfile" = {
+        "workloadIdentity" = {
+          "enabled" = true
+        }
+      }
+    }
+  })
+  response_export_values = ["*"]
+}
+
+
+
 resource "azurerm_role_assignment" "network" {
   scope                = azurerm_resource_group.rg.id
   role_definition_name = "Network Contributor"
