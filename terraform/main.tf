@@ -233,7 +233,7 @@ resource "azurerm_kubernetes_cluster" "aksproxy" {
   
   http_proxy_config {
     http_proxy = "http://${azurerm_network_interface.example.private_ip_address}:8888/"    
-    https_proxy = "http://${azurerm_network_interface.example.private_ip_address}:8888"
+    https_proxy = "http://${azurerm_network_interface.example.private_ip_address}:8888/"
     no_proxy = [
      "cluster.local",
      "default"
