@@ -193,9 +193,9 @@ resource "azurerm_kubernetes_cluster" "aks" {
   }
   
   oidc_issuer_enabled = true
-  oms_agent {
-    log_analytics_workspace_id = data.azurerm_log_analytics_workspace.default.id
-  }
+  # oms_agent {
+  #   log_analytics_workspace_id = data.azurerm_log_analytics_workspace.default.id
+  # }
 
   tags = local.tags
 
@@ -240,9 +240,9 @@ resource "azurerm_kubernetes_cluster" "aksproxy" {
     ]
   }
   oidc_issuer_enabled = true
-  oms_agent {
-    log_analytics_workspace_id = data.azurerm_log_analytics_workspace.default.id
-  }
+  # oms_agent {
+  #   log_analytics_workspace_id = data.azurerm_log_analytics_workspace.default.id
+  # }
 
   tags = local.tags
   lifecycle {
@@ -322,17 +322,17 @@ resource "azurerm_role_assignment" "networkproxy" {
   principal_id         = azurerm_kubernetes_cluster.aksproxy.identity.0.principal_id
 }
 
-resource "azurerm_role_assignment" "fast_metrics" {
-  scope                = azurerm_kubernetes_cluster.aks.id
-  role_definition_name = "Monitoring Metrics Publisher"
-  principal_id         = azurerm_kubernetes_cluster.aks.oms_agent[0].oms_agent_identity[0].object_id
-}
+# resource "azurerm_role_assignment" "fast_metrics" {
+#   scope                = azurerm_kubernetes_cluster.aks.id
+#   role_definition_name = "Monitoring Metrics Publisher"
+#   principal_id         = azurerm_kubernetes_cluster.aks.oms_agent[0].oms_agent_identity[0].object_id
+# }
 
-resource "azurerm_role_assignment" "fast_metricsproxy" {
-  scope                = azurerm_kubernetes_cluster.aks.id
-  role_definition_name = "Monitoring Metrics Publisher"
-  principal_id         = azurerm_kubernetes_cluster.aksproxy.oms_agent[0].oms_agent_identity[0].object_id
-}
+# resource "azurerm_role_assignment" "fast_metricsproxy" {
+#   scope                = azurerm_kubernetes_cluster.aks.id
+#   role_definition_name = "Monitoring Metrics Publisher"
+#   principal_id         = azurerm_kubernetes_cluster.aksproxy.oms_agent[0].oms_agent_identity[0].object_id
+# }
 
 resource "azurerm_user_assigned_identity" "fic" {
   resource_group_name = azurerm_resource_group.rg.name
