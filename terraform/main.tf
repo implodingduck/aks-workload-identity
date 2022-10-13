@@ -193,9 +193,9 @@ resource "azurerm_kubernetes_cluster" "aks" {
   }
   
   oidc_issuer_enabled = true
-  # oms_agent {
-  #   log_analytics_workspace_id = data.azurerm_log_analytics_workspace.default.id
-  # }
+  oms_agent {
+    log_analytics_workspace_id = data.azurerm_log_analytics_workspace.default.id
+  }
 
   tags = local.tags
 
@@ -240,9 +240,9 @@ resource "azurerm_kubernetes_cluster" "aksproxy" {
     ]
   }
   oidc_issuer_enabled = true
-  # oms_agent {
-  #   log_analytics_workspace_id = data.azurerm_log_analytics_workspace.default.id
-  # }
+  oms_agent {
+    log_analytics_workspace_id = data.azurerm_log_analytics_workspace.default.id
+  }
 
   tags = local.tags
   lifecycle {
@@ -288,7 +288,27 @@ resource "azapi_resource_action" "update" {
   response_export_values = ["*"]
 }
 
-
+# resource "azapi_resource_action" "enable-az-mon" {
+#   type        = "Microsoft.ContainerService/managedClusters@2022-09-02-preview"
+#   resource_id = azurerm_kubernetes_cluster.aks.id
+#   method      = "PUT"
+  
+#   body = jsonencode({
+#     location = azurerm_resource_group.rg.location
+#     properties = {
+#           "azureMonitorProfile": {
+#             "metrics": {
+#                 "enabled": true,
+#                 "kubeStateMetrics": {
+#                     "metricLabelsAllowlist": "",
+#                     "metricAnnotationsAllowList": ""
+#                 }
+#             }
+#         }
+#     }
+#   })
+#   response_export_values = ["*"]
+# }
 
 resource "azurerm_role_assignment" "network" {
   scope                = azurerm_resource_group.rg.id
