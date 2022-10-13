@@ -172,7 +172,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   default_node_pool {
     name            = "default"
     node_count      = 1
-    vm_size         = "Standard_B2s"
+    vm_size         = "Standard_B2ms"
     os_disk_size_gb = "128"
     vnet_subnet_id  = azurerm_subnet.cluster.id
 
@@ -193,9 +193,9 @@ resource "azurerm_kubernetes_cluster" "aks" {
   }
   
   oidc_issuer_enabled = true
-  oms_agent {
-    log_analytics_workspace_id = data.azurerm_log_analytics_workspace.default.id
-  }
+  # oms_agent {
+  #   log_analytics_workspace_id = data.azurerm_log_analytics_workspace.default.id
+  # }
 
   tags = local.tags
 
@@ -211,7 +211,7 @@ resource "azurerm_kubernetes_cluster" "aksproxy" {
   default_node_pool {
     name            = "default"
     node_count      = 1
-    vm_size         = "Standard_B2s"
+    vm_size         = "Standard_B2ms"
     os_disk_size_gb = "128"
     vnet_subnet_id  = azurerm_subnet.cluster.id
 
@@ -232,17 +232,17 @@ resource "azurerm_kubernetes_cluster" "aksproxy" {
   }
   
   http_proxy_config {
-    http_proxy = "http://${azurerm_network_interface.example.private_ip_address}:8888/"    
-    https_proxy = "http://${azurerm_network_interface.example.private_ip_address}:8888/"
+    http_proxy = "http://${azurerm_network_interface.example.private_ip_address}:8888"    
+    https_proxy = "http://${azurerm_network_interface.example.private_ip_address}:8888"
     no_proxy = [
      "cluster.local",
      "default"
     ]
   }
   oidc_issuer_enabled = true
-  oms_agent {
-    log_analytics_workspace_id = data.azurerm_log_analytics_workspace.default.id
-  }
+  # oms_agent {
+  #   log_analytics_workspace_id = data.azurerm_log_analytics_workspace.default.id
+  # }
 
   tags = local.tags
   lifecycle {
@@ -321,43 +321,43 @@ resource "azurerm_user_assigned_identity" "fic" {
   name = "uai-fic-${local.cluster_name}"
 }
 
-resource "azapi_resource" "fic" {
-  depends_on = [
-    azurerm_kubernetes_cluster.aks
-  ]
-  type = "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2022-01-31-preview"
-  name      = "azapific"
-  parent_id = azurerm_user_assigned_identity.fic.id
+# resource "azapi_resource" "fic" {
+#   depends_on = [
+#     azurerm_kubernetes_cluster.aks
+#   ]
+#   type = "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2022-01-31-preview"
+#   name      = "azapific"
+#   parent_id = azurerm_user_assigned_identity.fic.id
 
-  body = jsonencode({
-    properties = {
-      audiences = [
-        "api://AzureADTokenExchange"
-      ]
-      issuer = azurerm_kubernetes_cluster.aks.oidc_issuer_url 
-      subject = "system:serviceaccount:default:${azurerm_user_assigned_identity.fic.name}"
-    }
-  })
-}
+#   body = jsonencode({
+#     properties = {
+#       audiences = [
+#         "api://AzureADTokenExchange"
+#       ]
+#       issuer = azurerm_kubernetes_cluster.aks.oidc_issuer_url 
+#       subject = "system:serviceaccount:default:${azurerm_user_assigned_identity.fic.name}"
+#     }
+#   })
+# }
 
-resource "azapi_resource" "ficproxy" {
-  depends_on = [
-    azurerm_kubernetes_cluster.aks
-  ]
-  type = "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2022-01-31-preview"
-  name      = "azapificproxy"
-  parent_id = azurerm_user_assigned_identity.fic.id
+# resource "azapi_resource" "ficproxy" {
+#   depends_on = [
+#     azurerm_kubernetes_cluster.aks
+#   ]
+#   type = "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2022-01-31-preview"
+#   name      = "azapificproxy"
+#   parent_id = azurerm_user_assigned_identity.fic.id
 
-  body = jsonencode({
-    properties = {
-      audiences = [
-        "api://AzureADTokenExchange"
-      ]
-      issuer = azurerm_kubernetes_cluster.aksproxy.oidc_issuer_url 
-      subject = "system:serviceaccount:default:${azurerm_user_assigned_identity.fic.name}"
-    }
-  })
-}
+#   body = jsonencode({
+#     properties = {
+#       audiences = [
+#         "api://AzureADTokenExchange"
+#       ]
+#       issuer = azurerm_kubernetes_cluster.aksproxy.oidc_issuer_url 
+#       subject = "system:serviceaccount:default:${azurerm_user_assigned_identity.fic.name}"
+#     }
+#   })
+# }
 
 resource "azurerm_key_vault" "kv" {
   name                       = "kv-${local.func_name}"
