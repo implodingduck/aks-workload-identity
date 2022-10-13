@@ -96,5 +96,5 @@ jobs:
         run: |
             echo "starting..."
             cd terraform
-            #terraform apply -auto-approve theplan
-            terraform destroy -auto-approve
+            terraform apply -auto-approve theplan
+            #terraform destroy -auto-approve
